@@ -1,19 +1,103 @@
-int blankVal = 254;
-int startVal = 253;
-int endVal = 252;
+
+#include "EEPROM.h"
+void setup() {
+  Serial.begin(115200);
+  _blankEEPROM();
+}
+String password = "defaultPassword";
+byte value; 
+void loop(){
+	Serial.println(password);
+	_addString("hello", 0);
+	Serial.println(_getString(0));
+	_addString("david", 2);
+	Serial.println(_getString(2));
+	_addString("how are you", 4);			//no (did how are are you and indexes of that)
+	Serial.println(_getString(4));
+	_addString("doing", 6);	//worked
+	Serial.println(_getString(6));
+	_addString("today", 8); 		//worked
+	Serial.println(_getString(8));
+	_addString("sir", 10); 		//worked
+	Serial.println(_getString(10));
+
+
+	Serial.println(_getString(0));
+	Serial.println(_getString(2));
+	Serial.println(_getString(4));
+	Serial.println(_getString(6));
+	Serial.println(_getString(8));
+	Serial.println(_getString(10));
+	int addressStart = 0;
+	while(true){
+		value = EEPROM.read(addressStart);
+		Serial.print(addressStart);
+		Serial.print("\t");
+		Serial.print(value, DEC);
+		Serial.println();
+		addressStart = addressStart + 1;
+		if (addressStart == 200){
+		    while(true){
+		    	delay(500);
+		    }
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+int _blankVal = 254;
+int _startVal = 253;
+int _endVal = 252;
 int _addressSpace = 1024;
 /*
-initializes the object with an int, addressSpace, which specifies the size of the EEPROM (in bytes)
+initializes the object with an int, _addressSpace, which specifies the size of the EEPROM (in bytes)
 */
 
 
 /*
-Goes through the whole EEPROM and writes blankVal to every single address
+Goes through the whole EEPROM and writes _blankVal to every single address
 */
-void blankEEPROM(){
+void _blankEEPROM(){
   for (int i = 0; i < _addressSpace; i++){
-  	if(EEPROM.read(i) != blankVal){
-      EEPROM.write(i, blankVal);
+  	if(EEPROM.read(i) != _blankVal){
+      EEPROM.write(i, _blankVal);
   	}	
    }
 }
@@ -22,10 +106,10 @@ void blankEEPROM(){
 Is passed a string and an int. It will add the string at the earliest possible place. It will store the reference for that at stringplace and stringplace+1
 stringPlace must be even! 
 */
-void addString(String stringToAdd, int stringPlace){
-  defrag();
-  int earliestEmptyIndex = findEarliestEmptyIndex();
-  stringToEEPROMTwo(stringToAdd, earliestEmptyIndex);
+void _addString(String stringToAdd, int stringPlace){
+  _defrag();
+  int earliestEmptyIndex = _findEarliestEmptyIndex();
+  _stringToEEPROM(stringToAdd, earliestEmptyIndex);
   EEPROM.write(stringPlace, earliestEmptyIndex);
   //Serial.print(stringPlace);
   //Serial.print(",");
@@ -35,16 +119,16 @@ void addString(String stringToAdd, int stringPlace){
 /*
 Iterates through filesystem, moves everything forward then updates indices at first 100
 */
-void defrag(){
+void _defrag(){
   int amountShift = 0; 
   boolean didDefraggingOccur = false;
   for(int i = 100; i < _addressSpace; i++){
-    if(EEPROM.read(i) == blankVal){
+    if(EEPROM.read(i) == _blankVal){
       amountShift--;
     }
     else{
       if(amountShift != 0){ //means shift is needed
-        shifter(amountShift, i);
+        _shifter(amountShift, i);
         didDefraggingOccur = true;
         amountShift = 0;
       }
@@ -58,12 +142,12 @@ void defrag(){
 	  	boolean doneWithStart = false;
 	  	boolean doneWithEnd = false;
 	    for(int j = EEPROM.read(i-1); j < _addressSpace; j++){ 
-	      	if(EEPROM.read(j) == startVal && doneWithStart == false){
+	      	if(EEPROM.read(j) == _startVal && doneWithStart == false){
 	        	indexOfStartOfLastStringFound = j;
 	        	EEPROM.write(i, j);
 	        	doneWithStart == true;
 	      	}
-	      	if(EEPROM.read(j) == endVal && doneWithEnd == false){
+	      	if(EEPROM.read(j) == _endVal && doneWithEnd == false){
 	        	indexOfEndOfLastStringFound = j;
 	        	EEPROM.write(i+1, j);
 	        	doneWithEnd == true;
@@ -71,14 +155,14 @@ void defrag(){
 	    }
 	  }
 }
-  zeroEEPROMAfterLastIndex();
+  _zeroEEPROMAfterLastIndex();
 }
 
 
 /*
 Is sent a amount to shift (positive == right; negative == left) and the place the shift should start
 */
-void shifter(int amountToShift, int indexToShiftFrom){
+void _shifter(int amountToShift, int indexToShiftFrom){
   for(int i = indexToShiftFrom; i < _addressSpace; i++){//goes from index to shift from to address space
     EEPROM.write(i+amountToShift, EEPROM.read(i));
   }
@@ -87,7 +171,7 @@ void shifter(int amountToShift, int indexToShiftFrom){
 /*
 Finds the last index with data in it and then zeros data out after that point
 */
-void zeroEEPROMAfterLastIndex(){
+void _zeroEEPROMAfterLastIndex(){
   int lastIndex = 100;
   for(int i = 1; i < 100; i=i+2){
     if(EEPROM.read(i) > lastIndex){
@@ -96,7 +180,7 @@ void zeroEEPROMAfterLastIndex(){
   }
   lastIndex++; 																
   for (int i = lastIndex; i < _addressSpace; i++){
-      EEPROM.write(i, blankVal);
+      EEPROM.write(i, _blankVal);
     }
 }
 
@@ -104,30 +188,30 @@ void zeroEEPROMAfterLastIndex(){
 /*
 Returns the int value for the earliest empty address
 */
-int findEarliestEmptyIndex(){
+int _findEarliestEmptyIndex(){
   for(int i = 100; i < _addressSpace; i++){
-    if(EEPROM.read(i) == blankVal){
+    if(EEPROM.read(i) == _blankVal){
       return i;
     }
   }
 }
 
 /*
-Adds a string to the EEPROM at the current address surrounded by startVal and endVal
+Adds a string to the EEPROM at the current address surrounded by _startVal and _endVal
 */
-void stringToEEPROMTwo(String toE, int addr){
-  EEPROM.write(addr, startVal);
+void _stringToEEPROM(String toE, int addr){
+  EEPROM.write(addr, _startVal);
   for(int i = 0; i < toE.length(); i ++){
     EEPROM.write(addr+i+1, toE.charAt(i));
     delay(5);
   }
-  EEPROM.write(addr+toE.length()+1, endVal);
+  EEPROM.write(addr+toE.length()+1, _endVal);
 }
 
 /*
 stringNumber must be even and between 0 and 98
 */
-String getString(int stringNumber){
+String _getString(int stringNumber){
 	String result = "";
 	int startOfString = EEPROM.read(stringNumber) + 1;
 	int endOfString = EEPROM.read(stringNumber+1) - 1;
