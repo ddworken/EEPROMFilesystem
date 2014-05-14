@@ -1,84 +1,3 @@
-
-#include "EEPROM.h"
-void setup() {
-  Serial.begin(115200);
-  blankEEPROM();
-}
-String password = "defaultPassword";
-byte value; 
-void loop(){
-	Serial.println(password);
-	addString("hello", 0);
-	Serial.println(getString(0));
-	addString("david", 2);
-	Serial.println(getString(2));
-	addString("doing", 4);			//no (did how are are you and indexes of that)
-	Serial.println(getString(4));
-	addString("how are you", 6);	//worked
-	Serial.println(getString(6));
-	addString("another", 8); 		//worked
-	Serial.println(getString(8));
-
-
-	Serial.println(getString(0));
-	Serial.println(getString(2));
-	Serial.println(getString(4));
-	Serial.println(getString(6));
-	Serial.println(getString(8));
-	int addressStart = 0;
-	while(true){
-		value = EEPROM.read(addressStart);
-		Serial.print(addressStart);
-		Serial.print("\t");
-		Serial.print(value, DEC);
-		Serial.println();
-		addressStart = addressStart + 1;
-		if (addressStart == 200){
-		    while(true){
-		    	delay(500);
-		    }
-		}
-	}
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 int blankVal = 254;
 int startVal = 253;
 int endVal = 252;
@@ -108,9 +27,9 @@ void addString(String stringToAdd, int stringPlace){
   int earliestEmptyIndex = findEarliestEmptyIndex();
   stringToEEPROMTwo(stringToAdd, earliestEmptyIndex);
   EEPROM.write(stringPlace, earliestEmptyIndex);
-  Serial.print(stringPlace);
-  Serial.print(",");
-  Serial.println(earliestEmptyIndex);
+  //Serial.print(stringPlace);
+  //Serial.print(",");
+  //Serial.println(earliestEmptyIndex);
   EEPROM.write(stringPlace+1, earliestEmptyIndex+stringToAdd.length()+1);
 }
 /*
@@ -118,6 +37,7 @@ Iterates through filesystem, moves everything forward then updates indices at fi
 */
 void defrag(){
   int amountShift = 0; 
+  boolean didDefraggingOccur = false;
   for(int i = 100; i < _addressSpace; i++){
     if(EEPROM.read(i) == blankVal){
       amountShift--;
@@ -125,40 +45,41 @@ void defrag(){
     else{
       if(amountShift != 0){ //means shift is needed
         shifter(amountShift, i);
+        didDefraggingOccur = true;
         amountShift = 0;
       }
     }
   }
-  int indexOfStartOfLastStringFound = 100; //curent bug is that this section allows last string to be used multiple places (add int counter or something)
+  int indexOfStartOfLastStringFound = 100; 
   int indexOfEndOfLastStringFound = 100;
   boolean isInMiddleOfWord = false; 
-  for(int i = 2; i < 100; i=i+2){
-    for(int j = EEPROM.read(i-1); j < _addressSpace; j++){ //    for(int j = indexOfStartOfLastStringFound; j < _addressSpace; j++){
-      if(EEPROM.read(j) == startVal){
-        indexOfStartOfLastStringFound = j;
-        EEPROM.write(i, j);
-      }
-      if(EEPROM.read(j) == endVal){
-        indexOfEndOfLastStringFound = j;
-       //Serial.print(F("In defrag2, just wrote to: "));
-  		//Serial.println(i+1);
-  		if(i+1 == 1 && j == 130){
-        	Serial.println("shit");
-        }
-        EEPROM.write(i+1, j);
-      }
-    }
-  }
+  if(didDefraggingOccur){
+	  for(int i = 2; i < 100; i=i+2){
+	  	boolean doneWithStart = false;
+	  	boolean doneWithEnd = false;
+	    for(int j = EEPROM.read(i-1); j < _addressSpace; j++){ 
+	      	if(EEPROM.read(j) == startVal && doneWithStart == false){
+	        	indexOfStartOfLastStringFound = j;
+	        	EEPROM.write(i, j);
+	        	doneWithStart == true;
+	      	}
+	      	if(EEPROM.read(j) == endVal && doneWithEnd == false){
+	        	indexOfEndOfLastStringFound = j;
+	        	EEPROM.write(i+1, j);
+	        	doneWithEnd == true;
+	      	}
+	    }
+	  }
+}
   zeroEEPROMAfterLastIndex();
 }
+
 
 /*
 Is sent a amount to shift (positive == right; negative == left) and the place the shift should start
 */
 void shifter(int amountToShift, int indexToShiftFrom){
   for(int i = indexToShiftFrom; i < _addressSpace; i++){//goes from index to shift from to address space
-  	Serial.print(F("In shifter, just wrote to: "));
-  	Serial.println(i+amountToShift);
     EEPROM.write(i+amountToShift, EEPROM.read(i));
   }
 }
@@ -173,9 +94,7 @@ void zeroEEPROMAfterLastIndex(){
       lastIndex = EEPROM.read(i);
     }
   }
-  lastIndex++; 																					//may or may not be needed. added because this was deleting the endVal of strings because of bug elsehwere
-  Serial.print(F("Zeroing everything after: "));
-  Serial.println(lastIndex);
+  lastIndex++; 																
   for (int i = lastIndex; i < _addressSpace; i++){
       EEPROM.write(i, blankVal);
     }
@@ -192,7 +111,10 @@ int findEarliestEmptyIndex(){
     }
   }
 }
-//not cause of bug
+
+/*
+Adds a string to the EEPROM at the current address surrounded by startVal and endVal
+*/
 void stringToEEPROMTwo(String toE, int addr){
   EEPROM.write(addr, startVal);
   for(int i = 0; i < toE.length(); i ++){
@@ -201,6 +123,7 @@ void stringToEEPROMTwo(String toE, int addr){
   }
   EEPROM.write(addr+toE.length()+1, endVal);
 }
+
 /*
 stringNumber must be even and between 0 and 98
 */
