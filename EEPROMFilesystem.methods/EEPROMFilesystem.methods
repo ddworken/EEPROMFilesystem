@@ -1,0 +1,122 @@
+//Note: These are the current methods for this library. I have not yet packaged them into a library so currently is just requires one to copy and paste them onto the end of one's program. 
+
+int blankVal = 254;
+int startVal = 253;
+int endVal = 252;
+int _addressSpace = 1024;
+/*
+initializes the object with an int, addressSpace, which specifies the size of the EEPROM (in bytes)
+*/
+
+
+/*
+Goes through the whole EEPROM and writes blankVal to every single address
+*/
+void blankEEPROM(){
+  for (int i = 0; i < _addressSpace; i++){
+      EEPROM.write(i, blankVal);
+    }
+}
+
+/*
+Is passed a string and an int. It will add the string at the earliest possible place. It will store the reference for that at stringplace and stringplace+1
+stringPlace must be even! 
+*/
+void addString(String stringToAdd, int stringPlace){
+  defrag();
+  int earliestEmptyIndex = findEarliestEmptyIndex();
+  stringToEEPROMTwo(stringToAdd, earliestEmptyIndex);
+  EEPROM.write(stringPlace, earliestEmptyIndex);
+  Serial.print(stringPlace);
+  Serial.print(",");
+  Serial.println(earliestEmptyIndex);
+  EEPROM.write(stringPlace+1, earliestEmptyIndex+stringToAdd.length()+1);
+}
+/*
+Iterates through filesystem, moves everything forward then updates indices at first 100
+*/
+void defrag(){
+  int amountShift = 0; 
+  for(int i = 100; i < _addressSpace; i++){
+    if(EEPROM.read(i) == blankVal){
+      amountShift--;
+    }
+    else{
+      if(amountShift != 0){ //means shift is needed
+        shifter(amountShift, i);
+        amountShift = 0;
+      }
+    }
+  }
+  int indexOfStartOfLastStringFound = 100; //curent bug is that this section allows last string to be used multiple places (add int counter or something)
+  int indexOfEndOfLastStringFound = 100;
+  boolean isInMiddleOfWord = false; 
+  for(int i = 2; i < 100; i=i+2){
+    for(int j = EEPROM.read(i-1); j < _addressSpace; j++){ //    for(int j = indexOfStartOfLastStringFound; j < _addressSpace; j++){
+
+      if(EEPROM.read(j) == startVal){
+        indexOfStartOfLastStringFound = j;
+        EEPROM.write(i, j);
+      }
+      if(EEPROM.read(j) == endVal){
+        indexOfEndOfLastStringFound = j;
+       //Serial.print(F("In defrag2, just wrote to: "));
+  		//Serial.println(i+1);
+  		if(i+1 == 1 && j == 130){
+        	Serial.println("shit");
+        }
+        EEPROM.write(i+1, j);
+      }
+    }
+  }
+  zeroEEPROMAfterLastIndex();
+}
+
+/*
+Is sent a amount to shift (positive == right; negative == left) and the place the shift should start
+*/
+void shifter(int amountToShift, int indexToShiftFrom){
+  for(int i = indexToShiftFrom; i < _addressSpace; i++){//goes from index to shift from to address space
+  	Serial.print(F("In shifter, just wrote to: "));
+  	Serial.println(i+amountToShift);
+    EEPROM.write(i+amountToShift, EEPROM.read(i));
+  }
+}
+
+/*
+Finds the last index with data in it and then zeros data out after that point
+*/
+void zeroEEPROMAfterLastIndex(){
+  int lastIndex = 100;
+  for(int i = 1; i < 100; i=i+2){
+    if(EEPROM.read(i) > lastIndex){
+      lastIndex = EEPROM.read(i);
+    }
+  }
+  Serial.print(F("Zeroing everything after: "));
+  Serial.println(lastIndex);
+  for (int i = lastIndex; i < _addressSpace; i++){
+      EEPROM.write(i, blankVal);
+    }
+}
+
+
+/*
+Returns the int value for the earliest empty address
+*/
+int findEarliestEmptyIndex(){
+  for(int i = 100; i < _addressSpace; i++){
+    if(EEPROM.read(i) == blankVal){
+      return i;
+    }
+  }
+}
+//not cause of bug
+void stringToEEPROMTwo(String toE, int addr){
+  EEPROM.write(addr, startVal);
+  for(int i = 0; i < toE.length(); i ++){
+    EEPROM.write(addr+i+1, toE.charAt(i));
+    delay(5);
+  }
+  EEPROM.write(addr+toE.length()+1, endVal);
+}
